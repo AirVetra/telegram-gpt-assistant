@@ -7,7 +7,7 @@ import random
 import telethon
 from telethon.utils import get_peer_id
 from telethon.tl.types import InputPhoneContact
-from telethon.tl.functions.contacts import ImportContactsRequest, GetContactsRequest # Добавляем GetContactsRequest
+from telethon.tl.functions.contacts import ImportContactsRequest, GetContactsRequest
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -58,46 +58,41 @@ class TelegramConnector:
             return self.entity_cache[entity_identifier]
 
         try:
-            async with self.limiter:
-                # Пытаемся преобразовать в число.  Если не получается, считаем, что это username.
-                try:
-                    entity_id = int(entity_identifier)
-                except ValueError:
-                    # Если не число, то это может быть username или номер телефона
-                    entity = await self.client.get_entity(entity_identifier)
-                else:
-                    # Если число, то это, скорее всего, ID пользователя
+            async with self.limiter:  # Ограничиваем запросы
+                #Определяем тип
+                if entity_identifier.startswith('+'): #Если начинается с +, то это номер
+                    # Сначала проверяем, есть ли контакт с таким номером в адресной книге
+                    contacts = await self.client(GetContactsRequest(hash=0))
+                    found_user = None
+                    for user in contacts.users:
+                        if user.phone == entity_identifier.lstrip('+'):  # Убираем +, на всякий случай
+                            found_user = user
+                            break
+
+                    if found_user:
+                        # Если контакт найден, используем его
+                        entity = found_user
+                        logging.info(f"Found user with phone {entity_identifier} in contacts.")
+                    else:
+                        # Если контакт не найден, импортируем его
+                        logging.info(f"Importing contact with phone {entity_identifier}...")
+                        try:
+                            contact = InputPhoneContact(client_id=0, phone=entity_identifier, first_name='Temp', last_name='')
+                            result = await self.client(ImportContactsRequest([contact]))
+
+                            # Получаем пользователя из импортированных контактов
+                            if result.users:
+                                entity = result.users[0]
+                            else:
+                                raise ValueError(f"Could not import contact for phone number: {entity_identifier}")
+                        except Exception as e:
+                            logging.error(f"Error importing contact or getting entity by phone: {e}")
+                            return None
+                else: #Иначе - username или ID
                     try:
-                        entity = await self.client.get_entity(get_peer_id(entity_id))
+                        entity = await self.client.get_entity(entity_identifier)
                     except ValueError:
-                        # Если не удалось получить сущность по ID, возможно, это номер телефона
-                        # Сначала проверяем, есть ли контакт с таким номером в адресной книге
-                        contacts = await self.client(GetContactsRequest(hash=0))
-                        found_user = None
-                        for user in contacts.users:
-                            if user.phone == entity_identifier.lstrip('+'): #Убираем +, на всякий случай
-                                found_user = user
-                                break
-
-                        if found_user:
-                            # Если контакт найден, используем его
-                            entity = found_user
-                            logging.info(f"Found user with phone {entity_identifier} in contacts.")
-                        else:
-                            # Если контакт не найден, импортируем его
-                            logging.info(f"Importing contact with phone {entity_identifier}...")
-                            try:
-                                contact = InputPhoneContact(client_id=0, phone=entity_identifier, first_name='Temp', last_name='')
-                                result = await self.client(ImportContactsRequest([contact]))
-
-                                # Получаем пользователя из импортированных контактов
-                                if result.users:
-                                    entity = result.users[0]
-                                else:
-                                    raise ValueError(f"Could not import contact for phone number: {entity_identifier}")
-                            except Exception as e:
-                                logging.error(f"Error importing contact or getting entity by phone: {e}")
-                                return None
+                        entity = await self.client.get_entity(get_peer_id(int(entity_identifier)))
 
             self.entity_cache[entity_identifier] = entity  # Сохраняем в кэш
             return entity
@@ -125,3 +120,27 @@ class TelegramConnector:
             return "ChannelForbidden"
         else:
             return "Unknown"
+
+    async def search_contacts_by_name(self, first_name=None, last_name=None):
+        """Ищет пользователей в контактах по имени и/или фамилии."""
+
+        results = []
+        contacts = await self.client(GetContactsRequest(hash=0))
+
+        for user in contacts.users:
+            match = True
+
+            # Проверяем first_name
+            if first_name:
+                if not hasattr(user, 'first_name') or user.first_name is None or first_name.lower() not in user.first_name.lower():
+                    match = False
+
+            # Проверяем last_name, если совпало по first_name (или если first_name не указано)
+            if match and last_name:
+                if not hasattr(user, 'last_name') or user.last_name is None or last_name.lower() not in user.last_name.lower():
+                    match = False
+
+            if match:
+                results.append(user)
+
+        return results
