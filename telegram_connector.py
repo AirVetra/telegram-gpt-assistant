@@ -6,8 +6,8 @@ import asyncio
 import random
 import telethon
 from telethon.utils import get_peer_id
-from telethon.tl.types import InputPhoneContact  # Добавляем
-from telethon.tl.functions.contacts import ImportContactsRequest #Добавляем
+from telethon.tl.types import InputPhoneContact
+from telethon.tl.functions.contacts import ImportContactsRequest, GetContactsRequest # Добавляем GetContactsRequest
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -49,6 +49,7 @@ class TelegramConnector:
             await asyncio.sleep(random.uniform(1, 3)) #Дополнительная пауза
         return messages
 
+
     async def get_entity_info(self, entity_identifier):
         logging.info(f"Getting info for entity: {entity_identifier}")
 
@@ -69,20 +70,34 @@ class TelegramConnector:
                     try:
                         entity = await self.client.get_entity(get_peer_id(entity_id))
                     except ValueError:
-                         # Если не удалось получить сущность по ID, возможно, это номер телефона
-                        try:
-                            # Пытаемся импортировать контакт
-                            contact = InputPhoneContact(client_id=0, phone=entity_identifier, first_name='Temp', last_name='')
-                            result = await self.client(ImportContactsRequest([contact]))
+                        # Если не удалось получить сущность по ID, возможно, это номер телефона
+                        # Сначала проверяем, есть ли контакт с таким номером в адресной книге
+                        contacts = await self.client(GetContactsRequest(hash=0))
+                        found_user = None
+                        for user in contacts.users:
+                            if user.phone == entity_identifier.lstrip('+'): #Убираем +, на всякий случай
+                                found_user = user
+                                break
 
-                            # Получаем пользователя из импортированных контактов
-                            if result.users:
-                                entity = result.users[0]
-                            else:
-                                raise ValueError(f"Could not import contact for phone number: {entity_identifier}")
-                        except Exception as e:
-                            logging.error(f"Error importing contact or getting entity by phone: {e}")
-                            return None
+                        if found_user:
+                            # Если контакт найден, используем его
+                            entity = found_user
+                            logging.info(f"Found user with phone {entity_identifier} in contacts.")
+                        else:
+                            # Если контакт не найден, импортируем его
+                            logging.info(f"Importing contact with phone {entity_identifier}...")
+                            try:
+                                contact = InputPhoneContact(client_id=0, phone=entity_identifier, first_name='Temp', last_name='')
+                                result = await self.client(ImportContactsRequest([contact]))
+
+                                # Получаем пользователя из импортированных контактов
+                                if result.users:
+                                    entity = result.users[0]
+                                else:
+                                    raise ValueError(f"Could not import contact for phone number: {entity_identifier}")
+                            except Exception as e:
+                                logging.error(f"Error importing contact or getting entity by phone: {e}")
+                                return None
 
             self.entity_cache[entity_identifier] = entity  # Сохраняем в кэш
             return entity
