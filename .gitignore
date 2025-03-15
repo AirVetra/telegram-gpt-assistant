@@ -173,3 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 config.py
+my_session.session
+my_chats.csv
+
+telegram.db
