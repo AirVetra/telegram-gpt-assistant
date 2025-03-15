@@ -125,7 +125,9 @@ class TelegramConnector:
         """Ищет пользователей в контактах по имени и/или фамилии."""
 
         results = []
-        contacts = await self.client(GetContactsRequest(hash=0))
+        async with self.limiter: # Добавляем ограничитель скорости
+            contacts = await self.client(GetContactsRequest(hash=0))
+        await asyncio.sleep(2)  # Увеличиваем задержку до 2 секунд
 
         for user in contacts.users:
             match = True
