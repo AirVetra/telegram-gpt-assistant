@@ -176,3 +176,6 @@ config.py
 my_session.session
 my_chats.csv
 telegram.db
+
+my_session.session
+my_session.session
