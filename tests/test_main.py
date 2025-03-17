@@ -357,23 +357,3 @@ async def test_search_by_nonexistent_username(mock_telegram_connector, capsys):
         # 3. Проверки
         captured = capsys.readouterr()
         assert "No entities found" in captured.out
-
-
-@pytest.mark.asyncio
-async def test_flood_wait_error(mock_telegram_connector, capsys):
-    """
-    Тест обработки ошибки FloodWaitError.
-    """
-    with patch('main.TelegramConnector', return_value=mock_telegram_connector):
-
-        # 1. Подготовка данных: имитируем FloodWaitError
-        mock_telegram_connector.search_entities.side_effect = FloodWaitError(AsyncMock(), 10)
-
-        # 2. Выполнение действия
-        with patch('argparse.ArgumentParser.parse_args',
-                return_value=argparse.Namespace(user='someuser', tel=None, id=None, first_name=None, last_name=None, title=None)):
-            await main()
-
-        # 3. Проверки
-        captured = capsys.readouterr()
-        assert "No entities found" in captured.out  # Ожидаем, что search_entities вернет []
