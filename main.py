@@ -11,8 +11,8 @@ async def main():
     group.add_argument("--user", help="Username of the Telegram entity")
     group.add_argument("--tel", help="Phone number of the Telegram entity")
     group.add_argument("--id", help="ID of the Telegram entity")
-    group.add_argument("--first_name", help="First name for searching contacts") #Добавляем в группу
-    group.add_argument("--last_name", help="Last name for searching contacts") #Добавляем в группу
+    group.add_argument("--first_name", help="First name for searching contacts")
+    group.add_argument("--last_name", help="Last name for searching contacts")
 
     args = parser.parse_args()
 
@@ -42,22 +42,24 @@ async def main():
     elif args.user:
         # Получение информации по username
         entity = await telegram.get_entity_info(args.user)
-        print_entity_info(entity, telegram) #Выносим в отдельную функцию
+        print_entity_info(entity, telegram)
 
     elif args.tel:
         # Получение информации по номеру телефона
         entity = await telegram.get_entity_info(args.tel)
-        print_entity_info(entity, telegram) #Выносим в отдельную функцию
+        print_entity_info(entity, telegram)
 
     elif args.id:
         # Получение информации по ID
         entity = await telegram.get_entity_info(args.id)
-        print_entity_info(entity, telegram) #Выносим в отдельную функцию
+        print_entity_info(entity, telegram)
+
     else:
-       #Если ничего не нашли
+        #Если ничего не нашли
         print("Entity not found.")
 
-def print_entity_info(entity, telegram): #Функция вывода
+
+def print_entity_info(entity, telegram):
     if entity:
         print("Entity Information:")
         print(f"  ID: {entity.id}")

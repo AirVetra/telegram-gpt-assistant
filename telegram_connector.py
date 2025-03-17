@@ -6,8 +6,9 @@ import asyncio
 import random
 import telethon
 from telethon.utils import get_peer_id
-from telethon.tl.types import InputPhoneContact
+from telethon.tl.types import InputPhoneContact, Chat, Channel, User, ChatForbidden, ChannelForbidden
 from telethon.tl.functions.contacts import ImportContactsRequest, GetContactsRequest
+import csv
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -146,3 +147,62 @@ class TelegramConnector:
                 results.append(user)
 
         return results
+
+    async def export_dialogs_to_csv(self, filename="dialogs.csv"):
+        """Экспортирует информацию о диалогах пользователя в CSV-файл."""
+
+        if not self.client.is_connected(): #Проверяем, подключены ли мы
+            await self.connect()
+
+        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = [
+                'full_id', 'id', 'title', 'username', 'type',
+                'is_user', 'is_group', 'is_channel',
+                'date', 'unread_count',
+                'first_name', 'last_name', 'phone',
+                'participants_count', 'admins_count', 'kicked_count', 'banned_count',
+                'about'
+            ]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            async for dialog in self.client.iter_dialogs(): # Используем iter_dialogs()
+                async with self.limiter: # И limiter внутри цикла
+                    entity = dialog.entity
+                    row = {
+                        'full_id': get_peer_id(entity),
+                        'id': entity.id,
+                        'title': getattr(entity, 'title', None),
+                        'username': getattr(entity, 'username', None),
+                        'type': self.get_entity_type(entity),
+                        'is_user': dialog.is_user,
+                        'is_group': dialog.is_group,
+                        'is_channel': dialog.is_channel,
+                        'date': dialog.date.isoformat() if dialog.date else None,
+                        'unread_count': dialog.unread_count,
+
+                    }
+                    # Добавляем специфичные для разных типов
+                    if dialog.is_user:
+                        row.update({
+                            'first_name': getattr(entity, 'first_name', None),
+                            'last_name': getattr(entity, 'last_name', None),
+                            'phone': getattr(entity, 'phone', None),
+                            'about': getattr(entity, 'about', None),
+                        })
+                    if dialog.is_group:
+                        row.update({
+                            'participants_count': getattr(entity, 'participants_count', None),
+                            'admins_count': getattr(entity, 'admins_count', None),
+                            'kicked_count': getattr(entity, 'kicked_count', None),
+                            'banned_count': getattr(entity, 'banned_count', None),
+                            'about': getattr(entity, 'about', None),
+                        })
+                    if dialog.is_channel:
+                        row.update({
+                            'participants_count': getattr(entity, 'participants_count', None),  # Канал - это супергруппа
+                            'about': getattr(entity, 'about', None),
+                        })
+
+                    writer.writerow(row)
+        logging.info(f"Dialogs exported to {filename}")
