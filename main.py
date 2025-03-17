@@ -2,7 +2,7 @@ import asyncio
 import argparse
 import config
 from telegram_connector import TelegramConnector
-from telethon.utils import get_peer_id  # Добавляем импорт get_peer_id
+#Убираем from telethon.utils import get_peer_id  #  get_peer_id  теперь тут не нужен
 
 
 async def main():
@@ -41,10 +41,10 @@ async def main():
         print("No entities found matching the search criteria.")
 
 
-def print_entity_info(entity, telegram):
+def print_entity_info(entity, telegram): #Убираем telegram
     if entity:
         print("Entity Information:")
-        print(f"  Full ID: {get_peer_id(entity)}")  # Выводим полный ID
+        print(f"  Full ID: {entity.full_id}")  # Используем атрибут full_id
         print(f"  ID: {entity.id}")
 
         if hasattr(entity, 'title'):

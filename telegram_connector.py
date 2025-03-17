@@ -1,5 +1,5 @@
 from telethon.sync import TelegramClient
-from telethon.errors import PeerIdInvalidError, FloodWaitError, ChatIdInvalidError #Добавляем ChatIdInvalidError
+from telethon.errors import PeerIdInvalidError, FloodWaitError, ChatIdInvalidError
 from aiolimiter import AsyncLimiter
 import logging
 import asyncio
@@ -150,9 +150,11 @@ class TelegramConnector:
                 except ValueError:
                     logging.error(f"Invalid ID format: {id}. ID must be an integer.")
                     return []
+
                 try:
                     #Пытаемся получить entity по ID
                     entity = await self.client.get_entity(get_peer_id(entity_id))
+                    entity.full_id = get_peer_id(entity) #Добавляем атрибут
                     results.append(entity)
 
                 except ChatIdInvalidError:
@@ -177,6 +179,7 @@ class TelegramConnector:
             try:
                 async with self.limiter:
                     entity = await self.client.get_entity(user)
+                    entity.full_id = get_peer_id(entity)  # Добавляем атрибут full_id
                 if entity:
                     results.append(entity)
             except (PeerIdInvalidError, ValueError):
@@ -198,6 +201,7 @@ class TelegramConnector:
                             break
 
                     if found_user:
+                        found_user.full_id = get_peer_id(found_user) #Добавляем
                         results.append(found_user)
                         logging.info(f"Found user with phone {tel} in contacts.")
                     else:
@@ -209,6 +213,7 @@ class TelegramConnector:
                             # Получаем пользователя из импортированных контактов
                             if result.users:
                                 entity = result.users[0]
+                                entity.full_id = get_peer_id(entity)  # Добавляем атрибут full_id
                                 results.append(entity)
                             else:
                                 raise ValueError(f"Could not import contact for phone number: {tel}")
@@ -235,6 +240,7 @@ class TelegramConnector:
                     if not hasattr(user, 'last_name') or user.last_name is None or last_name.lower() not in user.last_name.lower():
                         match = False
                 if match:
+                    user.full_id = get_peer_id(user) #Добавляем
                     results.append(user)
 
         elif title:
@@ -242,6 +248,7 @@ class TelegramConnector:
             async for dialog in self.client.iter_dialogs():
                 async with self.limiter:
                     if hasattr(dialog.entity, 'title') and dialog.entity.title and title.lower() in dialog.entity.title.lower():
+                        dialog.entity.full_id = get_peer_id(dialog.entity) #Добавляем
                         results.append(dialog.entity) #Сохраняем именно entity
 
         return results
