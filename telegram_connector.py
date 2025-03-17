@@ -1,7 +1,7 @@
 from telethon.sync import TelegramClient
 from telethon.errors import PeerIdInvalidError, FloodWaitError, ChatIdInvalidError
 from aiolimiter import AsyncLimiter
-import logging
+#import logging  # Убираем
 import asyncio
 import random
 import telethon
@@ -10,7 +10,7 @@ from telethon.tl.types import InputPhoneContact, Chat, Channel, User, ChatForbid
 from telethon.tl.functions.contacts import ImportContactsRequest, GetContactsRequest
 import csv
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') #Убираем
 
 class TelegramConnector:
     def __init__(self, api_id, api_hash, phone_number, session_name='my_session',
@@ -40,7 +40,8 @@ class TelegramConnector:
                 break
 
         if saved_messages_dialog is None:
-            logging.warning("Could not find Saved Messages dialog.")
+            #logging.warning("Could not find Saved Messages dialog.") #Убираем
+            print("Could not find Saved Messages dialog.")
             return []
 
         messages = []
@@ -131,7 +132,8 @@ class TelegramConnector:
                         })
 
                     writer.writerow(row)
-        logging.info(f"Dialogs exported to {filename}")
+        #logging.info(f"Dialogs exported to {filename}") #Убираем
+        print(f"Dialogs exported to {filename}")
 
     async def search_dialogs_by_title(self, title):
         #УДАЛЯЕМ, так как используем search_entities
@@ -148,7 +150,8 @@ class TelegramConnector:
                 try:
                     entity_id = int(id)  # Приводим ID к числу
                 except ValueError:
-                    logging.error(f"Invalid ID format: {id}. ID must be an integer.")
+                    #logging.error(f"Invalid ID format: {id}. ID must be an integer.") #Убираем
+                    print(f"Invalid ID format: {id}. ID must be an integer.")
                     return []
 
                 try:
@@ -158,19 +161,24 @@ class TelegramConnector:
                     results.append(entity)
 
                 except ChatIdInvalidError:
-                    logging.error(f"Could not find entity with ID {id} (invalid chat ID).")
+                    #logging.error(f"Could not find entity with ID {id} (invalid chat ID).") #Убираем
+                    print(f"Could not find entity with ID {id} (invalid chat ID).")
                     return []
                 except PeerIdInvalidError:
-                    logging.info(f"Entity with id {id} not found.")
+                    #logging.info(f"Entity with id {id} not found.") #Убираем
+                    print(f"Entity with id {id} not found.")
                     return []  # Возвращаем пустой список, если не нашли
                 except ValueError as e:
-                    logging.error(f"Error getting entity by ID {id}: {e}") #Другая ошибка
+                    #logging.error(f"Error getting entity by ID {id}: {e}") #Убираем
+                    print(f"Error getting entity by ID {id}: {e}")
                     return []
                 except FloodWaitError as e:
-                    logging.error(f"Flood wait required: {e.seconds} seconds.")
+                    #logging.error(f"Flood wait required: {e.seconds} seconds.") #Убираем
+                    print(f"Flood wait required: {e.seconds} seconds.")
                     return [] #Прекращаем в случае Flood
                 except TypeError as e:
-                    logging.error(f"Type Error: {e}")
+                    #logging.error(f"Type Error: {e}") #Убираем
+                    print(f"Type Error: {e}")
                     return []
 
 
@@ -183,9 +191,11 @@ class TelegramConnector:
                 if entity:
                     results.append(entity)
             except (PeerIdInvalidError, ValueError):
-                logging.info(f"Entity with username {user} not found.")
+                #logging.info(f"Entity with username {user} not found.") #Убираем
+                print(f"Entity with username {user} not found.")
             except FloodWaitError as e:
-                logging.error(f"Flood wait required: {e.seconds} seconds.")
+                #logging.error(f"Flood wait required: {e.seconds} seconds.") #Убираем
+                print(f"Flood wait required: {e.seconds} seconds.")
                 return []
 
         elif tel:
@@ -203,10 +213,12 @@ class TelegramConnector:
                     if found_user:
                         found_user.full_id = get_peer_id(found_user) #Добавляем
                         results.append(found_user)
-                        logging.info(f"Found user with phone {tel} in contacts.")
+                        #logging.info(f"Found user with phone {tel} in contacts.") #Убираем
+                        print(f"Found user with phone {tel} in contacts.")
                     else:
                         # Если контакт не найден, импортируем его
-                        logging.info(f"Importing contact with phone {tel}...")
+                        #logging.info(f"Importing contact with phone {tel}...") #Убираем
+                        print(f"Importing contact with phone {tel}...")
                         try:
                             contact = InputPhoneContact(client_id=0, phone=tel, first_name='Temp', last_name='')
                             result = await self.client(ImportContactsRequest([contact]))
@@ -218,10 +230,12 @@ class TelegramConnector:
                             else:
                                 raise ValueError(f"Could not import contact for phone number: {tel}")
                         except Exception as e:
-                            logging.error(f"Error importing contact or getting entity by phone: {e}")
+                            #logging.error(f"Error importing contact or getting entity by phone: {e}") #Убираем
+                            print(f"Error importing contact or getting entity by phone: {e}")
                             return []
             except FloodWaitError as e:
-                logging.error(f"Flood wait required: {e.seconds} seconds.")
+                #logging.error(f"Flood wait required: {e.seconds} seconds.") #Убираем
+                print(f"Flood wait required: {e.seconds} seconds.")
                 return []
 
 
@@ -252,3 +266,34 @@ class TelegramConnector:
                         results.append(dialog.entity) #Сохраняем именно entity
 
         return results
+
+    async def get_recent_messages(self, entity_identifier, limit=1):
+        """
+        Возвращает последние `limit` сообщений из указанного чата/канала/пользователя.
+        """
+        #logging.info(f"Getting {limit} recent message(s) from entity: {entity_identifier}") #Убираем
+        print(f"Getting {limit} recent message(s) from entity: {entity_identifier}")
+        try:
+            async with self.limiter:
+                # Используем search_entities для получения сущности
+                entities = await self.search_entities(id=entity_identifier, user=entity_identifier, tel=entity_identifier)
+                if not entities:
+                    #logging.warning(f"Entity not found: {entity_identifier}") #Убираем
+                    print(f"Entity not found: {entity_identifier}")
+                    return []  # Возвращаем пустой список, если сущность не найдена
+
+                entity = entities[0]  # Берем первую найденную сущность
+                #logging.info(f"Got entity: {entity}") #Убираем
+                print(f"Got entity: {entity}")
+
+                messages = []
+                async for message in self.client.iter_messages(entity, limit=limit):
+                    #logging.info(f"Got message: {message}") #Убираем
+                    print(f"Got message: {message}")
+                    messages.append(message)
+                return messages
+
+        except Exception as e:
+            #logging.exception(f"An unexpected error occurred in get_recent_messages: {e}") #Убираем
+            print(f"An unexpected error occurred in get_recent_messages: {e}")
+            return []

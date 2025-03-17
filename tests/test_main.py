@@ -4,7 +4,7 @@ import argparse
 from unittest.mock import AsyncMock, patch
 import config  # Твой файл config.py
 from telegram_connector import TelegramConnector
-from main import main, print_entity_info
+from main import main, print_entity_info  # Импортируем main и print_entity_info
 from telethon.errors import PeerIdInvalidError, FloodWaitError, ChatIdInvalidError
 from telethon.utils import get_peer_id
 import pytest_asyncio
@@ -33,8 +33,9 @@ async def test_search_by_username_existing(mock_telegram_connector, capsys):
         mock_user.username = "testuser"
         mock_user.phone = "+1234567890"
         mock_user.access_hash = 12345
+        mock_user.type = "User"  # Добавляем тип
         mock_telegram_connector.search_entities.return_value = [mock_user]
-        mock_telegram_connector.get_entity_type.return_value = "User"
+        #mock_telegram_connector.get_entity_type.return_value = "User" #Убираем
 
         # 2. Выполнение действия (запуск main с аргументом --user)
         with patch('argparse.ArgumentParser.parse_args',
@@ -98,8 +99,9 @@ async def test_search_by_valid_id(mock_telegram_connector, capsys, entity_id, ex
         mock_entity.title = expected_title
         mock_entity.username = expected_username
         mock_entity.access_hash = 456 #Добавляем access_hash
+        mock_entity.type = expected_type #Добавляем
         mock_telegram_connector.search_entities.return_value = [mock_entity]
-        mock_telegram_connector.get_entity_type.return_value = expected_type
+        #mock_telegram_connector.get_entity_type.return_value = expected_type #Убираем
 
         # 2. Выполнение действия
         with patch('argparse.ArgumentParser.parse_args',
@@ -161,8 +163,9 @@ async def test_search_by_existing_title(mock_telegram_connector, capsys):
         mock_dialog.entity.title = "Emprendedores"
         mock_dialog.entity.username = "emprendedores_chat"
         mock_dialog.entity.access_hash = 789 #Добавляем
+        mock_dialog.entity.type = "Channel"
         mock_telegram_connector.search_entities.return_value = [mock_dialog.entity]
-        mock_telegram_connector.get_entity_type.return_value = "Channel"  # Допустим, это канал
+        #mock_telegram_connector.get_entity_type.return_value = "Channel"  # Допустим, это канал #Убираем
 
         # 2. Выполнение действия
         with patch('argparse.ArgumentParser.parse_args',
@@ -216,8 +219,9 @@ async def test_search_by_first_name(mock_telegram_connector, capsys):
         mock_user.username = "kristina_ivanova"
         mock_user.phone = "+79991234567"
         mock_user.access_hash = 147 #Добавляем
+        mock_user.type = "User" #Добавляем
         mock_telegram_connector.search_entities.return_value = [mock_user]
-        mock_telegram_connector.get_entity_type.return_value = "User"
+        #mock_telegram_connector.get_entity_type.return_value = "User" #Убираем
 
         # 2. Выполнение действия
         with patch('argparse.ArgumentParser.parse_args',
@@ -255,8 +259,9 @@ async def test_search_by_last_name(mock_telegram_connector, capsys):
         mock_user.username = None
         mock_user.phone = "+79999999999"
         mock_user.access_hash = 258
+        mock_user.type = "User" #Добавляем
         mock_telegram_connector.search_entities.return_value = [mock_user]
-        mock_telegram_connector.get_entity_type.return_value = "User"
+        #mock_telegram_connector.get_entity_type.return_value = "User" #Убираем
 
         # 2. Выполнение действия
         with patch('argparse.ArgumentParser.parse_args',
@@ -299,8 +304,9 @@ async def test_search_by_tel(mock_telegram_connector, capsys, phone):
         mock_user.username = "kristina_rupshayte"
         mock_user.phone = "79118668098"  # Используем отформатированный номер
         mock_user.access_hash = 369
+        mock_user.type = "User"
         mock_telegram_connector.search_entities.return_value = [mock_user]
-        mock_telegram_connector.get_entity_type.return_value = "User"
+        #mock_telegram_connector.get_entity_type.return_value = "User" #Убираем
 
         # 2. Выполнение действия
         with patch('argparse.ArgumentParser.parse_args',
