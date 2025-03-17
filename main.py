@@ -2,66 +2,49 @@ import asyncio
 import argparse
 import config
 from telegram_connector import TelegramConnector
+from telethon.utils import get_peer_id  # Добавляем импорт get_peer_id
 
 
 async def main():
     # Настраиваем парсер аргументов командной строки
-    parser = argparse.ArgumentParser(description="Get information about a Telegram entity or search contacts by name.")
-    group = parser.add_mutually_exclusive_group(required=True)  # Добавляем взаимоисключающую группу
+    parser = argparse.ArgumentParser(description="Search for Telegram entities by ID, username, phone, name, or title.")
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--user", help="Username of the Telegram entity")
     group.add_argument("--tel", help="Phone number of the Telegram entity")
     group.add_argument("--id", help="ID of the Telegram entity")
     group.add_argument("--first_name", help="First name for searching contacts")
     group.add_argument("--last_name", help="Last name for searching contacts")
+    group.add_argument("--title", help="Title for searching dialogs")
 
     args = parser.parse_args()
 
     telegram = TelegramConnector(config.API_ID, config.API_HASH, config.PHONE_NUMBER)
     await telegram.connect()
 
-    if args.first_name or args.last_name:
-        # Поиск по имени/фамилии
-        results = await telegram.search_contacts_by_name(first_name=args.first_name, last_name=args.last_name)
-        if results:
-            print("Search Results:")
-            for user in results:
-                print(f"  ID: {user.id}")
-                if hasattr(user, 'first_name'):
-                    print(f"  First Name: {user.first_name}")
-                if hasattr(user, 'last_name'):
-                    print(f"  Last Name: {user.last_name}")
-                if hasattr(user, 'username'):
-                    print(f"  Username: {user.username}")
-                if hasattr(user, 'phone'):
-                    print(f"  Phone: {user.phone}")
-                print(f"  Type: {telegram.get_entity_type(user)}")
-                print("---")
-        else:
-            print("No contacts found matching the search criteria.")
+    # Вызываем search_entities с нужными аргументами
+    results = await telegram.search_entities(
+        id=args.id,
+        user=args.user,
+        tel=args.tel,
+        first_name=args.first_name,
+        last_name=args.last_name,
+        title=args.title
+    )
 
-    elif args.user:
-        # Получение информации по username
-        entity = await telegram.get_entity_info(args.user)
-        print_entity_info(entity, telegram)
-
-    elif args.tel:
-        # Получение информации по номеру телефона
-        entity = await telegram.get_entity_info(args.tel)
-        print_entity_info(entity, telegram)
-
-    elif args.id:
-        # Получение информации по ID
-        entity = await telegram.get_entity_info(args.id)
-        print_entity_info(entity, telegram)
-
+    # Выводим результаты
+    if results:
+        print("Search Results:")
+        for entity in results:
+            print_entity_info(entity, telegram) #Передаем список
+            print("---")
     else:
-        #Если ничего не нашли
-        print("Entity not found.")
+        print("No entities found matching the search criteria.")
 
 
 def print_entity_info(entity, telegram):
     if entity:
         print("Entity Information:")
+        print(f"  Full ID: {get_peer_id(entity)}")  # Выводим полный ID
         print(f"  ID: {entity.id}")
 
         if hasattr(entity, 'title'):
@@ -76,6 +59,8 @@ def print_entity_info(entity, telegram):
             print(f"  Phone: {entity.phone}")
         if hasattr(entity, 'about'):
             print(f"  Bio: {entity.about}")
+        if hasattr(entity, 'access_hash'): #Добавил вывод access_hash
+            print(f" Access Hash: {entity.access_hash}")
 
         # Дополнительная информация в зависимости от типа сущности
         if hasattr(entity, 'participants_count'):
@@ -89,8 +74,8 @@ def print_entity_info(entity, telegram):
 
         print(f"  Type: {telegram.get_entity_type(entity)}")
 
-    else:
-        print("Entity not found.")
+    #else:  #Убрал, так как выводится в main
+        #print("Entity not found.")
 
 if __name__ == "__main__":
     asyncio.run(main())
